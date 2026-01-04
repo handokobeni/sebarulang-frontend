@@ -1,0 +1,1187 @@
+# Sebarulang Frontend - Cursor Rules
+
+## Architecture & Structure
+
+### Feature-Based Structure
+
+**CRITICAL**: Follow Feature-Based Structure, NOT technical layers:
+
+```
+frontend/
+├── app/                    # Next.js App Router (Pages/Routing)
+├── features/              # Feature modules (Business Logic)
+│   ├── auth/             # Auth feature
+│   ├── posts/            # Posts feature
+│   ├── bookings/         # Bookings feature
+│   └── ...
+├── shared/               # Shared code across features
+│   ├── components/       # Reusable UI components
+│   ├── hooks/           # Shared hooks
+│   └── utils/           # Utility functions
+├── lib/                  # Core infrastructure
+│   ├── api/             # API client
+│   └── auth/            # Auth infrastructure
+└── types/                # Global types
+```
+
+### Feature Module Structure
+
+**MUST**: Each feature follows this structure:
+
+```
+features/[feature-name]/
+├── components/      # Feature-specific components (Presentation)
+├── hooks/          # Feature-specific hooks (Business Logic)
+├── api/            # Feature API calls (Data Access)
+└── types.ts        # Feature domain types
+```
+
+### Dependency Flow
+
+**CRITICAL**: Dependencies always point INWARD:
+
+```
+Pages (app/)
+    ↓ depends on
+Feature Components (features/[feature]/components/)
+    ↓ depends on
+Feature Hooks (features/[feature]/hooks/)
+    ↓ depends on
+Feature API (features/[feature]/api/)
+    ↓ depends on
+API Client (lib/api/)
+    ↓ depends on
+Backend API
+```
+
+**Rules**:
+- ✅ Pages import components from features
+- ✅ Components depend on hooks, NOT API directly (DIP)
+- ✅ Hooks depend on API functions, NOT HTTP client directly (DIP)
+- ✅ API functions depend on API client interface (DIP)
+- ❌ NEVER import from outer layers to inner layers
+
+---
+
+## SOLID Principles
+
+### 1. Single Responsibility Principle (SRP)
+
+- **Components**: One component = one UI concern
+  - ✅ `PostCard` hanya display post card
+  - ✅ `PostForm` hanya handle form
+  - ❌ Jangan mix display + form logic di satu component
+
+- **Hooks**: One hook = one concern
+  - ✅ `usePosts` hanya fetch posts data
+  - ✅ `useCreatePost` hanya handle post creation
+  - ❌ Jangan mix multiple concerns di satu hook
+
+- **API Functions**: One function = one endpoint
+  - ✅ `postsApi.getAll()` hanya get all posts
+  - ✅ `postsApi.create()` hanya create post
+
+### 2. Open/Closed Principle (OCP)
+
+- **Components**: Extensible via props
+  - ✅ `Button` component dengan variants
+  - ✅ `PostCard` dengan optional props
+
+- **Hooks**: Composable
+  - ✅ Hooks bisa di-compose untuk complex logic
+  - ✅ `usePosts` + `useFilters` = filtered posts
+
+### 3. Liskov Substitution Principle (LSP)
+
+- **Components**: Bisa di-substitute jika follow same interface
+  - ✅ `PostCard` dan `PostCardCompact` dengan same props interface
+
+### 4. Interface Segregation Principle (ISP)
+
+- **Small, Focused Interfaces**:
+  ```typescript
+  // ✅ Good: Small, focused props interface
+  interface PostCardProps {
+    post: Post;
+    onLike?: (postId: string) => void;
+    onBookmark?: (postId: string) => void;
+  }
+  
+  // ❌ Bad: Too many props
+  interface PostCardProps {
+    post: Post;
+    onLike?: (postId: string) => void;
+    onBookmark?: (postId: string) => void;
+    onShare?: (postId: string) => void;
+    onComment?: (postId: string) => void;
+    onEdit?: (postId: string) => void;
+    onDelete?: (postId: string) => void;
+    // ... 20 more props
+  }
+  ```
+
+- **Separate Hooks**: Separate hooks untuk different operations
+  - ✅ `usePosts` untuk read, `useCreatePost` untuk write
+  - ❌ Jangan mix read + write di satu hook
+
+### 5. Dependency Inversion Principle (DIP)
+
+- **Components depend on hooks/interfaces**:
+  - ✅ Components depend pada hooks, bukan API calls langsung
+  - ✅ Components depend pada prop interfaces, bukan implementations
+
+- **Hooks depend on API interfaces**:
+  - ✅ Hooks depend pada API functions, bukan HTTP client langsung
+  - ✅ API functions depend pada API client interface
+
+---
+
+## Next.js 16 App Router Patterns
+
+### Server Components vs Client Components
+
+- **MUST**: Use Server Components by default (better performance)
+- **MUST**: Mark Client Components with `'use client'` directive
+- **MUST**: Use Client Components only when needed:
+  - Interactive components (onClick, useState, useEffect)
+  - Browser APIs (localStorage, window, etc.)
+  - Third-party libraries that require client-side
+
+```typescript
+// ✅ Good: Server Component (default)
+// app/posts/page.tsx
+export default async function PostsPage() {
+  // Can fetch data directly, no 'use client'
+  return <PostsList />;
+}
+
+// ✅ Good: Client Component (when needed)
+// features/posts/components/PostForm.tsx
+'use client';
+
+import { useState } from 'react';
+
+export function PostForm() {
+  const [title, setTitle] = useState('');
+  // ...
+}
+```
+
+### Metadata & SEO
+
+- **MUST**: Add metadata for all pages
+```typescript
+// app/posts/[id]/page.tsx
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const post = await getPost(params.id);
+  
+  return {
+    title: post.title,
+    description: post.description,
+    openGraph: {
+      images: [post.photos[0]],
+    },
+  };
+}
+```
+
+---
+
+## Component Patterns
+
+### Component Structure
+
+```typescript
+// ✅ Good: Component structure
+'use client';
+
+import { memo } from 'react';
+import { usePosts } from '../hooks/use-posts';
+
+interface PostListProps {
+  userId?: string;
+  onPostClick?: (postId: string) => void;
+}
+
+export const PostList = memo(function PostList({ 
+  userId, 
+  onPostClick 
+}: PostListProps) {
+  const { data: posts, isLoading, error } = usePosts({ userId });
+  
+  if (isLoading) return <PostListSkeleton />;
+  if (error) return <ErrorMessage error={error} />;
+  if (!posts?.length) return <EmptyState />;
+  
+  return (
+    <div className="post-list">
+      {posts.map(post => (
+        <PostCard 
+          key={post.id} 
+          post={post} 
+          onClick={() => onPostClick?.(post.id)}
+        />
+      ))}
+    </div>
+  );
+});
+```
+
+### Component Best Practices
+
+- **MUST**: Use TypeScript interfaces for props
+- **MUST**: Use `memo()` for expensive components
+- **MUST**: Extract complex logic to custom hooks
+- **MUST**: Keep components small (< 200 lines)
+- **MUST**: Use meaningful component names (PascalCase)
+
+---
+
+## Styling
+
+### No Inline Styles
+
+- **MUST**: NEVER use inline styles (`style` prop) in components
+- **MUST**: Use Tailwind CSS classes for all styling
+- **MUST**: Use CSS modules or global CSS files only when Tailwind is insufficient
+- **MUST**: Extract complex styling logic to utility functions or custom Tailwind classes
+
+```typescript
+// ✅ Good: Using Tailwind CSS classes
+export function PostCard({ post }: PostCardProps) {
+  return (
+    <div className="rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+      <h3 className="text-lg font-semibold text-gray-900">{post.title}</h3>
+      <p className="text-sm text-gray-600 mt-2">{post.description}</p>
+    </div>
+  );
+}
+
+// ✅ Good: Using CSS modules for complex styling (when Tailwind is insufficient)
+// PostCard.module.css
+// .custom-gradient {
+//   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+// }
+
+// PostCard.tsx
+import styles from './PostCard.module.css';
+
+export function PostCard({ post }: PostCardProps) {
+  return (
+    <div className={`${styles.customGradient} rounded-lg p-4`}>
+      {/* ... */}
+    </div>
+  );
+}
+
+// ❌ Bad: Using inline styles
+export function PostCard({ post }: PostCardProps) {
+  return (
+    <div style={{ borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
+      <h3 style={{ fontSize: '18px', fontWeight: '600' }}>{post.title}</h3>
+      <p style={{ fontSize: '14px', color: '#666' }}>{post.description}</p>
+    </div>
+  );
+}
+
+// ❌ Bad: Using inline styles with dynamic values
+export function PostCard({ post, isActive }: PostCardProps) {
+  return (
+    <div style={{ 
+      backgroundColor: isActive ? '#3b82f6' : '#fff',
+      padding: '16px',
+    }}>
+      {/* ... */}
+    </div>
+  );
+}
+
+// ✅ Good: Using Tailwind with conditional classes
+export function PostCard({ post, isActive }: PostCardProps) {
+  return (
+    <div className={`p-4 ${isActive ? 'bg-blue-500' : 'bg-white'}`}>
+      {/* ... */}
+    </div>
+  );
+}
+
+// ✅ Good: Using clsx or cn utility for complex conditional classes
+import { cn } from '@/lib/utils';
+
+export function PostCard({ post, isActive, variant }: PostCardProps) {
+  return (
+    <div className={cn(
+      'p-4 rounded-lg',
+      isActive && 'bg-blue-500 text-white',
+      !isActive && 'bg-white text-gray-900',
+      variant === 'compact' && 'p-2',
+      variant === 'large' && 'p-6'
+    )}>
+      {/* ... */}
+    </div>
+  );
+}
+```
+
+### Styling Best Practices
+
+- **MUST**: Use Tailwind CSS utility classes as primary styling method
+- **MUST**: Use `cn()` or `clsx()` utility for conditional classes
+- **MUST**: Extract reusable style patterns to shared components
+- **MUST**: Use CSS variables for theme values (colors, spacing, etc.)
+- **MUST**: Use Tailwind's `@apply` directive sparingly (only in CSS files when needed)
+- **MUST**: Keep Tailwind classes readable (use line breaks for long class lists)
+
+```typescript
+// ✅ Good: Readable Tailwind classes
+export function PostCard({ post }: PostCardProps) {
+  return (
+    <div
+      className={cn(
+        'rounded-lg border border-gray-200',
+        'p-4 shadow-sm',
+        'hover:shadow-md transition-shadow',
+        'bg-white'
+      )}
+    >
+      {/* ... */}
+    </div>
+  );
+}
+
+// ✅ Good: Extract to shared component
+// shared/components/ui/Card.tsx
+export function Card({ children, className }: CardProps) {
+  return (
+    <div className={cn(
+      'rounded-lg border border-gray-200 p-4 shadow-sm',
+      className
+    )}>
+      {children}
+    </div>
+  );
+}
+
+// Usage
+<Card className="hover:shadow-md">
+  <h3>{post.title}</h3>
+</Card>
+```
+
+### Dynamic Styling
+
+- **MUST**: Use Tailwind classes with conditional logic for dynamic styles
+- **MUST**: Use CSS variables for truly dynamic values (e.g., user-customizable colors)
+- **MUST**: Avoid inline styles even for dynamic values
+
+```typescript
+// ✅ Good: Dynamic styling with Tailwind classes
+export function StatusBadge({ status }: { status: 'active' | 'inactive' }) {
+  return (
+    <span
+      className={cn(
+        'px-2 py-1 rounded-full text-sm font-medium',
+        status === 'active' && 'bg-green-100 text-green-800',
+        status === 'inactive' && 'bg-gray-100 text-gray-800'
+      )}
+    >
+      {status}
+    </span>
+  );
+}
+
+// ✅ Good: Using CSS variables for truly dynamic values (rare cases)
+// Only use when value is truly dynamic (e.g., user input, API response)
+export function ProgressBar({ percentage }: { percentage: number }) {
+  return (
+    <div className="w-full bg-gray-200 rounded-full h-2">
+      <div
+        className="bg-blue-500 h-2 rounded-full transition-all"
+        style={{ width: `${percentage}%` }} // Only acceptable for truly dynamic values
+      />
+    </div>
+  );
+}
+
+// ❌ Bad: Using inline styles for static or semi-static values
+export function Button({ variant }: { variant: 'primary' | 'secondary' }) {
+  return (
+    <button
+      style={{
+        backgroundColor: variant === 'primary' ? '#3b82f6' : '#6b7280',
+        padding: '8px 16px',
+        borderRadius: '4px',
+      }}
+    >
+      Click me
+    </button>
+  );
+}
+
+// ✅ Good: Using Tailwind classes
+export function Button({ variant }: { variant: 'primary' | 'secondary' }) {
+  return (
+    <button
+      className={cn(
+        'px-4 py-2 rounded',
+        variant === 'primary' && 'bg-blue-500 text-white',
+        variant === 'secondary' && 'bg-gray-500 text-white'
+      )}
+    >
+      Click me
+    </button>
+  );
+}
+```
+
+### Exceptions
+
+- **ONLY**: Inline styles are ONLY acceptable for:
+  1. Truly dynamic values that cannot be expressed with Tailwind (e.g., percentage widths, calculated positions)
+  2. Third-party library requirements that require inline styles
+  3. CSS-in-JS libraries that generate optimized styles (not recommended, prefer Tailwind)
+
+```typescript
+// ✅ Acceptable: Truly dynamic value (percentage)
+export function ProgressBar({ percentage }: { percentage: number }) {
+  return (
+    <div className="w-full bg-gray-200 rounded-full h-2">
+      <div
+        className="bg-blue-500 h-2 rounded-full"
+        style={{ width: `${percentage}%` }} // Dynamic value from props/state
+      />
+    </div>
+  );
+}
+
+// ✅ Acceptable: Third-party library requirement
+import { FramerMotion } from 'framer-motion';
+
+export function AnimatedCard() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      // Framer Motion requires inline styles for animations
+      className="p-4 bg-white rounded-lg"
+    >
+      {/* ... */}
+    </motion.div>
+  );
+}
+```
+
+---
+
+## Hook Patterns
+
+### Custom Hook Structure
+
+```typescript
+// ✅ Good: Custom hook pattern
+// features/posts/hooks/use-posts.ts
+import { useQuery } from '@tanstack/react-query';
+import { postsApi } from '../api/posts-api';
+
+interface UsePostsOptions {
+  userId?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function usePosts(options: UsePostsOptions = {}) {
+  return useQuery({
+    queryKey: ['posts', options],
+    queryFn: () => postsApi.getAll(options),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+  });
+}
+```
+
+### Hook Best Practices
+
+- **MUST**: One hook = one concern (SRP)
+- **MUST**: Use TanStack Query for server state
+- **MUST**: Use Zustand for global client state
+- **MUST**: Use `useState`/`useReducer` for local component state
+- **MUST**: Memoize callbacks with `useCallback`
+- **MUST**: Memoize expensive calculations with `useMemo`
+
+---
+
+## API Patterns
+
+### API Function Structure
+
+```typescript
+// ✅ Good: API function pattern
+// features/posts/api/posts-api.ts
+import { apiClient } from '@/lib/api/client';
+import type { Post, CreatePostInput, GetPostsParams } from '../types';
+
+export const postsApi = {
+  getAll: async (params?: GetPostsParams): Promise<Post[]> => {
+    const response = await apiClient.get<{ data: Post[] }>('/posts', {
+      params,
+      withCredentials: true, // Include httpOnly cookies
+    });
+    return response.data.data;
+  },
+  
+  getById: async (id: string): Promise<Post> => {
+    const response = await apiClient.get<{ data: Post }>(`/posts/${id}`, {
+      withCredentials: true,
+    });
+    return response.data.data;
+  },
+  
+  create: async (input: CreatePostInput): Promise<Post> => {
+    const response = await apiClient.post<{ data: Post }>('/posts', input, {
+      withCredentials: true,
+    });
+    return response.data.data;
+  },
+};
+```
+
+### API Best Practices
+
+- **MUST**: One function = one endpoint (SRP)
+- **MUST**: Use `withCredentials: true` for all API calls (httpOnly cookies)
+- **MUST**: Type all request/response data
+- **MUST**: Extract response data (follow backend response format)
+- **MUST**: Handle errors in hooks, not in API functions
+
+---
+
+## State Management
+
+### TanStack Query (Server State)
+
+- **MUST**: Use TanStack Query for all server state
+- **MUST**: Configure proper cache times:
+  ```typescript
+  useQuery({
+    queryKey: ['posts'],
+    queryFn: () => postsApi.getAll(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+  ```
+
+- **MUST**: Use optimistic updates for mutations
+- **MUST**: Invalidate queries after mutations
+
+```typescript
+// ✅ Good: Mutation with optimistic update
+const mutation = useMutation({
+  mutationFn: postsApi.create,
+  onMutate: async (newPost) => {
+    // Cancel outgoing refetches
+    await queryClient.cancelQueries({ queryKey: ['posts'] });
+    
+    // Snapshot previous value
+    const previousPosts = queryClient.getQueryData(['posts']);
+    
+    // Optimistically update
+    queryClient.setQueryData(['posts'], (old: Post[]) => [...old, newPost]);
+    
+    return { previousPosts };
+  },
+  onError: (err, newPost, context) => {
+    // Rollback on error
+    queryClient.setQueryData(['posts'], context?.previousPosts);
+  },
+  onSettled: () => {
+    // Refetch after mutation
+    queryClient.invalidateQueries({ queryKey: ['posts'] });
+  },
+});
+```
+
+### Zustand (Global Client State)
+
+- **MUST**: Use Zustand only for global client state (auth, UI state)
+- **MUST**: Keep stores small and focused
+- **MUST**: NEVER store tokens in Zustand (tokens in httpOnly cookies)
+
+```typescript
+// ✅ Good: Zustand store
+// lib/auth/store.ts
+import { create } from 'zustand';
+
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  login: (user: User) => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  isAuthenticated: false,
+  
+  login: (user) => set({ 
+    user, 
+    isAuthenticated: true 
+  }),
+  
+  logout: () => {
+    set({ user: null, isAuthenticated: false });
+    if (typeof window !== 'undefined') {
+      sessionStorage.clear();
+    }
+  },
+}));
+```
+
+### Local State (Component State)
+
+- **MUST**: Use `useState`/`useReducer` for component-level state
+- **MUST**: Keep state as local as possible
+
+---
+
+## Performance Optimizations
+
+### Memoization
+
+- **MUST**: Use `memo()` for expensive components
+```typescript
+// ✅ Good: Memoized component
+export const PostCard = memo(function PostCard({ post }: PostCardProps) {
+  // Component logic
+});
+```
+
+- **MUST**: Use `useCallback()` for callbacks passed to child components
+```typescript
+// ✅ Good: Memoized callback
+const handlePostClick = useCallback((postId: string) => {
+  router.push(`/posts/${postId}`);
+}, [router]);
+```
+
+- **MUST**: Use `useMemo()` for expensive calculations
+```typescript
+// ✅ Good: Memoized calculation
+const filteredPosts = useMemo(() => {
+  return posts.filter(post => post.status === 'available');
+}, [posts]);
+```
+
+### Code Splitting
+
+- **MUST**: Use dynamic imports for large components
+```typescript
+// ✅ Good: Dynamic import
+const PostForm = dynamic(() => import('./PostForm'), {
+  loading: () => <PostFormSkeleton />,
+  ssr: false, // If component uses browser APIs
+});
+```
+
+### Image Optimization
+
+- **MUST**: Use Next.js `Image` component for all images
+```typescript
+// ✅ Good: Optimized image
+import Image from 'next/image';
+
+<Image
+  src={post.photos[0]}
+  alt={post.title}
+  width={400}
+  height={300}
+  loading="lazy"
+  placeholder="blur"
+/>
+```
+
+---
+
+## Security Best Practices
+
+### Authentication
+
+- **MUST**: NEVER store tokens in localStorage/sessionStorage
+- **MUST**: Tokens stored in httpOnly cookies (handled by backend)
+- **MUST**: Use `withCredentials: true` for all API calls
+- **MUST**: Handle token refresh in Axios interceptors
+
+### Input Validation
+
+- **MUST**: Validate all inputs with Zod
+- **MUST**: Client-side validation for UX
+- **MUST**: Server-side validation for security (backend handles this)
+
+```typescript
+// ✅ Good: Zod validation
+import { z } from 'zod';
+
+const createPostSchema = z.object({
+  title: z.string().min(3).max(100),
+  description: z.string().max(500),
+  category: z.enum(['nasi', 'lauk', 'snack', 'minuman', 'lainnya']),
+});
+
+type CreatePostInput = z.infer<typeof createPostSchema>;
+```
+
+### XSS Prevention
+
+- **MUST**: React auto-escapes by default (safe)
+- **MUST**: NEVER use `dangerouslySetInnerHTML` unless absolutely necessary
+- **MUST**: Sanitize any user-generated content
+
+### Security Headers
+
+- **MUST**: Configure security headers in `next.config.js`
+- **MUST**: Use CSP (Content Security Policy) with nonce
+
+---
+
+## Error Handling
+
+### Error Boundaries
+
+- **MUST**: Use Error Boundaries for component error handling
+- **MUST**: Log errors to Sentry (with quota optimization)
+
+```typescript
+// ✅ Good: Error Boundary
+'use client';
+
+import { Component, ReactNode } from 'react';
+
+interface Props {
+  children: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
+  }
+  
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Log to Sentry (with optimization)
+    if (typeof window !== 'undefined' && window.Sentry) {
+      window.Sentry.captureException(error, {
+        contexts: { react: { componentStack: errorInfo.componentStack } },
+      });
+    }
+  }
+  
+  render() {
+    if (this.state.hasError) {
+      return <ErrorFallback />;
+    }
+    return this.props.children;
+  }
+}
+```
+
+### API Error Handling
+
+- **MUST**: Handle errors in TanStack Query hooks
+- **MUST**: Show user-friendly error messages
+- **MUST**: Handle 401 (unauthorized) with token refresh
+- **MUST**: Handle 403 (forbidden) with appropriate message
+- **MUST**: Handle network errors gracefully
+
+```typescript
+// ✅ Good: Error handling in hook
+export function usePosts() {
+  const query = useQuery({
+    queryKey: ['posts'],
+    queryFn: () => postsApi.getAll(),
+    retry: (failureCount, error) => {
+      // Don't retry on 4xx errors
+      if (error.response?.status >= 400 && error.response?.status < 500) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+  });
+  
+  return {
+    ...query,
+    error: query.error ? formatError(query.error) : null,
+  };
+}
+```
+
+---
+
+## Testing Requirements
+
+### TDD (Test-Driven Development)
+
+- **MUST**: Write tests before implementation (Red-Green-Refactor)
+- **MUST**: Unit tests for all components and hooks
+- **MUST**: Mock API calls in tests
+
+```typescript
+// ✅ Good: Component test
+import { render, screen } from '@testing-library/react';
+import { PostCard } from './PostCard';
+
+describe('PostCard', () => {
+  it('should render post title', () => {
+    const post = { id: '1', title: 'Nasi Goreng', description: '...' };
+    render(<PostCard post={post} />);
+    expect(screen.getByText('Nasi Goreng')).toBeInTheDocument();
+  });
+});
+```
+
+### BDD (Behavior-Driven Development)
+
+- **MUST**: Write Gherkin feature files BEFORE implementation
+- **MUST**: E2E tests for critical user flows
+- **MUST**: Use Playwright for E2E tests
+
+```gherkin
+# ✅ Good: Gherkin feature file
+Feature: Post Creation
+  As a user
+  I want to create a post
+  So that I can share my leftover food
+
+  Scenario: Successfully create a post
+    Given I am logged in
+    When I navigate to "/posts/new"
+    And I fill in the post form with valid data
+    And I click "Create Post"
+    Then I should see "Post created successfully"
+    And I should be redirected to "/posts/:id"
+```
+
+### Test Coverage
+
+- **Target**: 80%+ for components and hooks
+- **Target**: 100% for critical user flows (E2E)
+
+---
+
+## Code Style & Conventions
+
+### Naming Conventions
+
+- **Components**: PascalCase (`PostCard`, `PostForm`)
+- **Hooks**: camelCase with `use` prefix (`usePosts`, `useCreatePost`)
+- **API Functions**: camelCase (`getAll`, `create`, `update`)
+- **Types/Interfaces**: PascalCase (`Post`, `CreatePostInput`)
+- **Constants**: UPPER_SNAKE_CASE (`MAX_TITLE_LENGTH`, `DEFAULT_PAGE_SIZE`)
+- **Files**: kebab-case (`post-card.tsx`, `use-posts.ts`)
+
+### File Organization
+
+```typescript
+// ✅ Good: File organization
+// 1. Imports (external first, then internal)
+import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { postsApi } from '../api/posts-api';
+
+// 2. Types/Interfaces
+interface PostListProps {
+  userId?: string;
+}
+
+// 3. Component/Hook
+export function PostList({ userId }: PostListProps) {
+  // Implementation
+}
+```
+
+### TypeScript
+
+- **MUST**: Use TypeScript strict mode
+- **MUST**: Type all props, functions, and variables
+- **MUST**: Use interfaces for object types
+- **MUST**: Use `type` for unions and intersections
+- **MUST**: Avoid `any` type (use `unknown` if needed)
+
+```typescript
+// ✅ Good: Proper typing
+interface Post {
+  id: string;
+  title: string;
+  description: string;
+  status: 'available' | 'taken' | 'expired';
+}
+
+// ❌ Bad: Any type
+function getPost(id: any): any {
+  // ...
+}
+```
+
+---
+
+## Forms & Validation
+
+### React Hook Form + Zod
+
+- **MUST**: Use React Hook Form for all forms
+- **MUST**: Use Zod for validation schemas
+- **MUST**: Validate on submit, not on change (for performance)
+
+```typescript
+// ✅ Good: Form with validation
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const createPostSchema = z.object({
+  title: z.string().min(3).max(100),
+  description: z.string().max(500),
+});
+
+type CreatePostInput = z.infer<typeof createPostSchema>;
+
+export function PostForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CreatePostInput>({
+    resolver: zodResolver(createPostSchema),
+  });
+  
+  const onSubmit = (data: CreatePostInput) => {
+    // Handle submit
+  };
+  
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register('title')} />
+      {errors.title && <span>{errors.title.message}</span>}
+      {/* ... */}
+    </form>
+  );
+}
+```
+
+---
+
+## API Client Configuration
+
+### Axios Setup
+
+- **MUST**: Use `withCredentials: true` for all API calls (httpOnly cookies)
+- **MUST**: Configure interceptors for error handling and token refresh
+- **MUST**: Handle 401 errors with automatic token refresh
+
+```typescript
+// ✅ Good: Axios client with interceptors
+// lib/api/client.ts
+import axios from 'axios';
+
+const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true, // CRITICAL: Include httpOnly cookies
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Response interceptor for token refresh
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        // Refresh token (refresh_token from httpOnly cookie)
+        await axios.post('/api/auth/refresh', {}, {
+          withCredentials: true,
+        });
+        
+        // Retry original request
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        // Handle refresh token expired
+        useAuthStore.getState().logout();
+        window.location.href = '/login?reason=session_expired';
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+```
+
+---
+
+## Environment Variables
+
+- **MUST**: Use `NEXT_PUBLIC_` prefix for public env vars
+- **MUST**: NEVER expose secrets in frontend
+- **MUST**: Validate environment variables at build time
+
+```typescript
+// ✅ Good: Environment variable validation
+const requiredEnvVars = ['NEXT_PUBLIC_API_URL'] as const;
+
+requiredEnvVars.forEach((varName) => {
+  if (!process.env[varName]) {
+    throw new Error(`Missing required environment variable: ${varName}`);
+  }
+});
+```
+
+---
+
+## Monitoring & Logging
+
+### Sentry Configuration
+
+- **MUST**: Configure Sentry with quota optimization
+- **MUST**: Filter non-critical errors (network errors, etc.)
+- **MUST**: Never log sensitive data (tokens, passwords)
+- **MUST**: Use sampling for transactions (10% sample rate)
+
+```typescript
+// ✅ Good: Sentry with optimization
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 0.1, // 10% transactions
+  beforeSend(event, hint) {
+    const error = hint.originalException;
+    
+    // Skip network errors (too common)
+    if (error instanceof Error && error.message.includes('Network')) {
+      return null;
+    }
+    
+    // Remove sensitive data
+    if (event.request?.headers) {
+      delete event.request.headers.Authorization;
+      delete event.request.headers.Cookie;
+    }
+    
+    return event;
+  },
+});
+```
+
+---
+
+## Accessibility (a11y)
+
+- **MUST**: Use semantic HTML elements
+- **MUST**: Add ARIA labels where needed
+- **MUST**: Ensure keyboard navigation works
+- **MUST**: Test with screen readers
+- **MUST**: Maintain proper color contrast
+
+```typescript
+// ✅ Good: Accessible component
+<button
+  onClick={handleClick}
+  aria-label="Like post"
+  aria-pressed={isLiked}
+>
+  <HeartIcon filled={isLiked} />
+</button>
+```
+
+---
+
+## Summary Checklist
+
+Before submitting code, verify:
+
+- [ ] Follows Feature-Based Structure (correct file placement)
+- [ ] Follows SOLID principles
+- [ ] Components are small and focused (< 200 lines)
+- [ ] Hooks are properly memoized (useCallback, useMemo)
+- [ ] Components are memoized when needed (memo)
+- [ ] Uses TanStack Query for server state
+- [ ] Uses Zustand only for global client state
+- [ ] NEVER stores tokens in localStorage/sessionStorage
+- [ ] All API calls use `withCredentials: true`
+- [ ] Error handling is comprehensive
+- [ ] Tests written (TDD/BDD)
+- [ ] TypeScript types are complete
+- [ ] Forms use React Hook Form + Zod
+- [ ] Images use Next.js Image component
+- [ ] NO inline styles (use Tailwind CSS classes)
+- [ ] Code is accessible (a11y)
+- [ ] Security best practices followed
+- [ ] Performance optimizations applied
+
+---
+
+## Quick Reference
+
+### Component Pattern
+```typescript
+'use client';
+
+import { memo } from 'react';
+import { usePosts } from '../hooks/use-posts';
+
+interface PostListProps {
+  userId?: string;
+}
+
+export const PostList = memo(function PostList({ userId }: PostListProps) {
+  const { data, isLoading, error } = usePosts({ userId });
+  
+  if (isLoading) return <Skeleton />;
+  if (error) return <ErrorMessage error={error} />;
+  
+  return <div>{/* Render posts */}</div>;
+});
+```
+
+### Hook Pattern
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import { postsApi } from '../api/posts-api';
+
+export function usePosts(options: UsePostsOptions = {}) {
+  return useQuery({
+    queryKey: ['posts', options],
+    queryFn: () => postsApi.getAll(options),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+```
+
+### API Pattern
+```typescript
+import { apiClient } from '@/lib/api/client';
+
+export const postsApi = {
+  getAll: async (params?: GetPostsParams): Promise<Post[]> => {
+    const response = await apiClient.get<{ data: Post[] }>('/posts', {
+      params,
+      withCredentials: true,
+    });
+    return response.data.data;
+  },
+};
+```
+
+---
+
+**Remember**: Code quality, performance, security, and accessibility are non-negotiable. Always follow these rules strictly.

@@ -1,0 +1,34 @@
+# Vercel ignore file
+# Files/directories yang tidak perlu di-deploy ke Vercel
+
+# Testing
+/tests
+/coverage
+/.playwright
+/playwright-report
+/test-results
+
+# Development
+/.vscode
+/.idea
+*.swp
+*.swo
+
+# Documentation (optional - bisa di-include jika perlu)
+# /docs
+
+# Build artifacts (akan di-generate di Vercel)
+/.next
+/out
+*.tsbuildinfo
+
+# Environment files (jangan commit)
+.env*
+!.env.example
+
+# Sentry
+.sentryclirc
+
+# Bundle analyzer
+.next/analyze/
+
