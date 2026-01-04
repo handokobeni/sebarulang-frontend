@@ -14,6 +14,16 @@ const nextConfig: NextConfig = {
             key: "X-DNS-Prefetch-Control",
             value: "on",
           },
+          // Attempt to override/remove headers that leak server information
+          // Note: Vercel may still add these headers at infrastructure level
+          {
+            key: "Server",
+            value: "", // Empty string to attempt removal
+          },
+          {
+            key: "Age",
+            value: "", // Empty string to attempt removal
+          },
           // Note: CSP, X-Frame-Options, X-Content-Type-Options, etc.
           // are set in proxy.ts to support nonce-based CSP
         ],

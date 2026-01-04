@@ -91,15 +91,33 @@ export function proxy(request: NextRequest) {
   const csp = cspDirectives.join("; ");
 
   // Remove headers that leak server information (security)
+  // Note: Vercel may add these headers after proxy, so we try multiple approaches
   response.headers.delete("X-Powered-By");
-  response.headers.delete("Server"); // Remove Vercel server header
-  response.headers.delete("Age"); // Remove Age header (indicates cached content)
+  response.headers.delete("Server");
+  response.headers.delete("Age");
+  response.headers.delete("X-Vercel-Cache"); // Also remove Vercel cache header
+  
+  // Set headers to empty string as fallback (some proxies respect this)
+  // This is a workaround for headers added by Vercel infrastructure
+  response.headers.set("Server", "");
+  response.headers.set("Age", "");
 
   // Set strict cache control to prevent caching of sensitive content
   // This prevents shared cache from storing user-specific or sensitive data
+  // Important: Set this AFTER removing Age header to prevent cache information leak
+  //
+  // Cache-Control directives explained:
+  // - private: Content tidak boleh di-cache oleh shared cache (CDN, proxy) - hanya browser cache
+  // - no-cache: Browser harus revalidate dengan server sebelum menggunakan cached content
+  // - no-store: Content tidak boleh disimpan di cache sama sekali (browser atau shared cache)
+  // - max-age=0: Browser cache immediately expired (0 detik)
+  // - must-revalidate: Browser harus revalidate expired content dengan server
+  // - proxy-revalidate: Shared cache (proxy/CDN) harus revalidate expired content
+  // - s-maxage=0: Shared cache (CDN, proxy, Vercel edge) tidak boleh cache lebih dari 0 detik
+  //   (immediate expiration untuk shared cache - ini penting untuk prevent cache information leak)
   response.headers.set(
     "Cache-Control",
-    "private, no-cache, no-store, max-age=0, must-revalidate, proxy-revalidate"
+    "private, no-cache, no-store, max-age=0, must-revalidate, proxy-revalidate, s-maxage=0"
   );
 
   // Set security headers
