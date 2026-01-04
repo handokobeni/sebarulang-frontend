@@ -38,6 +38,12 @@ export function proxy(request: NextRequest) {
 
   const isDev = process.env.NODE_ENV === "development";
 
+  // Get allowed image domains from environment variable (comma-separated)
+  // Example: NEXT_PUBLIC_IMAGE_DOMAINS=https://cdn.example.com,https://images.unsplash.com
+  // const imageDomains = process.env.NEXT_PUBLIC_IMAGE_DOMAINS
+  //   ? process.env.NEXT_PUBLIC_IMAGE_DOMAINS.split(",").map((d) => d.trim())
+  //   : [];
+
   // Build CSP with nonce
   const cspDirectives = [
     "default-src 'self'",
@@ -60,8 +66,12 @@ export function proxy(request: NextRequest) {
     isDev
       ? `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`
       : `style-src 'self' 'nonce-${nonce}'`,
-    // Images: self + data URIs + external HTTPS
-    "img-src 'self' data: https:",
+    // Images: self + data URIs + specific allowed domains
+    // Security: No wildcard 'https:' - only allow specific domains via NEXT_PUBLIC_IMAGE_DOMAINS
+    // For Cloudflare R2, add your R2 public URL or custom domain
+    // Example: NEXT_PUBLIC_IMAGE_DOMAINS=https://pub-xxx.r2.dev,https://cdn.sebarulang.com
+    `img-src 'self'`,
+    // `img-src 'self' data: ${imageDomains.join(" ")}`,
     // Fonts: self only
     "font-src 'self'",
     // Connections: self + API
@@ -79,6 +89,18 @@ export function proxy(request: NextRequest) {
   ];
 
   const csp = cspDirectives.join("; ");
+
+  // Remove headers that leak server information (security)
+  response.headers.delete("X-Powered-By");
+  response.headers.delete("Server"); // Remove Vercel server header
+  response.headers.delete("Age"); // Remove Age header (indicates cached content)
+
+  // Set strict cache control to prevent caching of sensitive content
+  // This prevents shared cache from storing user-specific or sensitive data
+  response.headers.set(
+    "Cache-Control",
+    "private, no-cache, no-store, max-age=0, must-revalidate, proxy-revalidate"
+  );
 
   // Set security headers
   response.headers.set("Content-Security-Policy", csp);

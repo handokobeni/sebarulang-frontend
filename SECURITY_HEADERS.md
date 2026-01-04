@@ -27,13 +27,46 @@ Proxy menangani:
 | `Permissions-Policy` | `geolocation=(), microphone=(), camera=()` | Restrict browser features |
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Force HTTPS (production only) |
 
+### 2.1. Headers yang Di-Remove
+
+| Header | Action | Reason |
+|--------|--------|--------|
+| `X-Powered-By` | **Removed** | Hide server information (security best practice) |
+| `Server` | **Removed** | Hide server information (Vercel header) |
+| `Age` | **Removed** | Prevent cache information leak (security best practice) |
+
+**Implementation**:
+- `next.config.ts`: `poweredByHeader: false` - Disable Next.js X-Powered-By header
+- `proxy.ts`: Remove headers yang leak information (`X-Powered-By`, `Server`, `Age`)
+
+### 2.2. Cache Control
+
+**Strict Cache Control** untuk prevent caching sensitive content:
+
+```
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate, proxy-revalidate
+```
+
+**Purpose**:
+- `private`: Content tidak boleh di-cache oleh shared cache (CDN, proxy)
+- `no-cache`: Browser harus revalidate dengan server sebelum menggunakan cached content
+- `no-store`: Content tidak boleh disimpan di cache sama sekali
+- `max-age=0`: Content immediately expired
+- `must-revalidate`: Browser harus revalidate expired content
+- `proxy-revalidate`: Proxy cache harus revalidate expired content
+
+**Security Benefit**:
+- Mencegah shared cache (CDN, proxy) menyimpan user-specific atau sensitive data
+- Mencegah cache poisoning attacks
+- Mencegah information leak melalui cached content
+
 ### 3. CSP Directives
 
 ```
 default-src 'self'
 script-src 'self' 'nonce-{nonce}' 'unsafe-inline' ['unsafe-eval' in dev only]
 style-src 'self' 'nonce-{nonce}' 'unsafe-inline'
-img-src 'self' data: https:
+img-src 'self' data: [specific domains from NEXT_PUBLIC_IMAGE_DOMAINS]
 font-src 'self'
 connect-src 'self' {API_URL}
 frame-ancestors 'none'
@@ -42,6 +75,14 @@ form-action 'self'
 object-src 'none'
 upgrade-insecure-requests (production only)
 ```
+
+**Note tentang `img-src`**:
+- **No wildcard `https:`**: Untuk security, tidak menggunakan wildcard `https:`
+- **Specific domains only**: Hanya allow specific domains via `NEXT_PUBLIC_IMAGE_DOMAINS`
+- **Default**: Hanya `'self'` dan `data:` (untuk inline images)
+- **External images**: Set `NEXT_PUBLIC_IMAGE_DOMAINS` dengan comma-separated domains
+  - Example: `NEXT_PUBLIC_IMAGE_DOMAINS=https://cdn.example.com,https://images.unsplash.com`
+  - For Cloudflare R2: `NEXT_PUBLIC_IMAGE_DOMAINS=https://pub-xxx.r2.dev`
 
 **Note tentang `'unsafe-inline'`**:
 - **Required untuk Next.js**: Next.js App Router meng-generate inline scripts/styles secara otomatis (hydration, font loading, CSS-in-JS)

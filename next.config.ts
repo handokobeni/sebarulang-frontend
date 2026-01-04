@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Disable X-Powered-By header (security: hide server information)
+  poweredByHeader: false,
   // Security headers are handled in proxy.ts with CSP nonce
   // Only static headers that don't need nonce are set here
   async headers() {
