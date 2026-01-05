@@ -16,19 +16,22 @@ test.describe("Post Detail Page", () => {
   });
 
   test("should display all post details", async ({ page }) => {
+    // Wait for detail page to fully load
+    await page.waitForTimeout(500);
+    
     // Check title
     await expect(page.getByRole("heading", { name: "Nasi Goreng Spesial" })).toBeVisible();
 
     // Check posted time
     await expect(page.getByText(/30 menit yang lalu/i)).toBeVisible();
 
-    // Check giver name
+    // Check giver name - appears in info card
     await expect(page.getByText("Budi Santoso")).toBeVisible();
 
-    // Check quantity
+    // Check quantity - appears in info card
     await expect(page.getByText("8-10 porsi")).toBeVisible();
 
-    // Check location
+    // Check location - appears in info card
     await expect(page.getByText("Jakarta Selatan, Kebayoran Baru")).toBeVisible();
 
     // Check description section
@@ -48,12 +51,13 @@ test.describe("Post Detail Page", () => {
   });
 
   test("should navigate back to feed", async ({ page }) => {
-    // Click back button
+    // Click back button - wait for it to be visible first
     const backButton = page.getByRole("button", { name: /Kembali ke Feed/i });
+    await expect(backButton).toBeVisible({ timeout: 5000 });
     await backButton.click();
     
     // Wait for navigation
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     
     // Check that we're back on homepage
     await expect(page.getByText(/Makanan Dibagikan/i)).toBeVisible();
@@ -61,28 +65,44 @@ test.describe("Post Detail Page", () => {
   });
 
   test("should like and unlike post from detail page", async ({ page }) => {
-    // Find like button by finding button with Heart icon
-    const buttons = await page.locator('button').all();
-    let likeButton = null;
+    // Wait for detail page to load
+    await page.waitForTimeout(500);
     
-    for (const btn of buttons) {
+    // Find like button - it's in the header actions area, before share button
+    // Look for button that contains Heart icon (lucide-heart)
+    const allButtons = await page.locator('button').all();
+    let foundLikeButton = null;
+    
+    for (const btn of allButtons) {
       const svg = btn.locator('svg');
       if (await svg.count() > 0) {
-        const svgClass = await svg.first().getAttribute('class');
-        if (svgClass?.includes('lucide-heart')) {
-          likeButton = btn;
+        // Check if SVG has Heart icon - lucide-heart class
+        const svgElement = svg.first();
+        const className = await svgElement.getAttribute('class') || '';
+        
+        // Heart icon from lucide-react has class containing 'lucide-heart'
+        // Check if button is visible and contains Heart icon
+        const isVisible = await btn.isVisible().catch(() => false);
+        if (isVisible && className.includes('lucide-heart')) {
+          foundLikeButton = btn;
           break;
         }
       }
     }
     
-    if (likeButton) {
+    // Like button should always be visible on detail page
+    expect(foundLikeButton).not.toBeNull();
+    
+    if (foundLikeButton) {
+      // Wait for button to be stable
+      await foundLikeButton.waitFor({ state: 'visible' });
+      
       // Click like
-      await likeButton.click();
+      await foundLikeButton.click();
       await page.waitForTimeout(500);
       
       // Click unlike
-      await likeButton.click();
+      await foundLikeButton.click();
       await page.waitForTimeout(500);
     }
   });
@@ -101,20 +121,14 @@ test.describe("Post Detail Page", () => {
     // Click button - this should trigger handleContactGiver which sets contactDialogOpen to true
     await contactButton.click();
     
-    // Wait a bit for React state update
-    await page.waitForTimeout(500);
-    
     // Wait for dialog to appear - ContactDialog is rendered in page.tsx, so it should appear
-    // Use multiple wait strategies
-    try {
-      await page.waitForSelector('[data-slot="dialog-root"]', { 
-        state: 'visible',
-        timeout: 10000 
-      });
-    } catch {
-      // Try waiting for dialog title directly
-      await page.waitForSelector('[data-slot="dialog-title"]', { timeout: 10000 });
-    }
+    await page.waitForSelector('[data-slot="dialog-root"]', { 
+      state: 'visible',
+      timeout: 10000 
+    });
+    
+    // Wait for dialog title
+    await page.waitForSelector('[data-slot="dialog-title"]', { timeout: 10000 });
     
     // Verify dialog is visible
     const dialogTitle = page.locator('[data-slot="dialog-title"]');
@@ -127,12 +141,20 @@ test.describe("Post Detail Page", () => {
     // Use .first() to avoid strict mode violation (Budi Santoso appears in paragraph and button)
     await expect(dialogContent.getByText("Budi Santoso").first()).toBeVisible();
     
-    // Close dialog
-    const closeButton = page.getByRole("button", { name: /Close/i }).first();
+    // Close dialog - use data-slot selector
+    const closeButton = page.locator('[data-slot="dialog-close"]');
     await closeButton.click();
     
     // Wait for dialog to close
     await page.waitForTimeout(1000);
+    
+    // Wait for dialog root to be hidden
+    await page.waitForSelector('[data-slot="dialog-root"]', { 
+      state: 'hidden',
+      timeout: 5000 
+    }).catch(() => {
+      // If selector fails, dialog is already gone
+    });
     
     // Verify dialog is closed
     await expect(dialogTitle).not.toBeVisible({ timeout: 5000 });
@@ -161,7 +183,7 @@ test.describe("Post Detail Page", () => {
         writeText: async () => {},
       };
     });
-
+    
     // Alternative: find by SVG class
     const shareButtons = page.locator('button').all();
     let foundShareButton = false;

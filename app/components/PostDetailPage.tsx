@@ -40,7 +40,7 @@ export function PostDetailPage({ post, onBack, onContact, onLike, isLiked }: Pos
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>Kembali ke Feed</span>

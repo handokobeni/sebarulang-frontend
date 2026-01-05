@@ -233,4 +233,19 @@
   body.dialog-open {
     overflow: hidden;
   }
+
+  /* Hide scrollbar for horizontal scroll (FilterTabs) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe area inset bottom untuk devices dengan home indicator */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }

@@ -9,6 +9,8 @@ import { MissionBanner } from "./components/MissionBanner";
 import { Footer } from "./components/Footer";
 import { PostDetailPage } from "./components/PostDetailPage";
 import { ContactDialog } from "./components/ContactDialog";
+import { BottomNav } from "./components/BottomNav";
+import { FloatingActionButton } from "./components/FloatingActionButton";
 import { Toaster, toast } from "./components/ui/sonner";
 
 // Force dynamic rendering untuk access nonce
@@ -152,7 +154,7 @@ export default function Home() {
   // Show detail view if in detail mode
   if (viewMode === "detail" && detailPost) {
     return (
-      <>
+      <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
         <PostDetailPage
           post={detailPost}
           onBack={handleBackToFeed}
@@ -161,18 +163,20 @@ export default function Home() {
           isLiked={likedPosts.has(detailPost.id)}
         />
         <Footer />
+        <BottomNav />
+        <FloatingActionButton />
         <Toaster />
         <ContactDialog
           post={contactPost}
           open={contactDialogOpen}
           onOpenChange={setContactDialogOpen}
         />
-      </>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
       <Header onSearch={setSearchQuery} />
       
       <StatsBar
@@ -188,17 +192,17 @@ export default function Home() {
         onCategoryChange={setSelectedCategory}
       />
 
-      <main className="container mx-auto max-w-7xl px-4 py-6">
+      <main className="container mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-6">
         {filteredPosts.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">
+          <div className="text-center py-8 sm:py-12">
+            <p className="text-sm sm:text-base text-gray-500">
               {searchQuery
                 ? "Tidak ada makanan yang sesuai dengan pencarian"
                 : "Belum ada postingan di kategori ini"}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 justify-items-center">
             {filteredPosts.map((post) => (
               <FoodPostCard
                 key={post.id}
@@ -214,6 +218,8 @@ export default function Home() {
       </main>
 
       <Footer />
+      <BottomNav />
+      <FloatingActionButton />
       <Toaster />
       <ContactDialog
         post={contactPost}

@@ -36,34 +36,33 @@ test.describe("Food Post Card", () => {
   });
 
   test("should like and unlike a post", async ({ page }) => {
+    // Check if we're on mobile - like button is hidden on mobile (hidden sm:flex)
+    const viewport = page.viewportSize();
+    const isMobile = viewport && viewport.width < 640; // sm breakpoint
+    
+    if (isMobile) {
+      // Like button is hidden on mobile, skip this test
+      test.skip();
+      return;
+    }
+    
     const firstCard = page.locator('[data-slot="card"]').first();
     
-    // Find like button by finding button with Heart icon
-    const buttons = await firstCard.locator('button').all();
-    let likeButton = null;
+    // Find like button by aria-label (more reliable than searching for SVG)
+    const likeButton = firstCard.getByRole("button", { name: /Like post/i });
     
-    for (const btn of buttons) {
-      const svg = btn.locator('svg');
-      if (await svg.count() > 0) {
-        const svgClass = await svg.first().getAttribute('class');
-        if (svgClass?.includes('lucide-heart')) {
-          likeButton = btn;
-          break;
-        }
-      }
-    }
+    // Wait for button to be visible (desktop only)
+    await expect(likeButton).toBeVisible({ timeout: 5000 });
     
-    if (likeButton) {
-      // Click like button
-      await likeButton.click();
-      
-      // Wait for like action to complete
-      await page.waitForTimeout(500);
-      
-      // Click again to unlike
-      await likeButton.click();
-      await page.waitForTimeout(500);
-    }
+    // Click like button
+    await likeButton.click();
+    
+    // Wait for like action to complete
+    await page.waitForTimeout(500);
+    
+    // Click again to unlike
+    await likeButton.click();
+    await page.waitForTimeout(500);
   });
 
   test("should open contact dialog when contact button is clicked", async ({ page }) => {
@@ -117,11 +116,14 @@ test.describe("Food Post Card", () => {
     await detailButton.click();
     
     // Wait for navigation
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     
     // Check that we're on detail page
     await expect(page.getByText("Nasi Goreng Spesial")).toBeVisible();
-    await expect(page.getByRole("button", { name: /Kembali ke Feed/i })).toBeVisible();
+    
+    // Back button is a regular button element
+    const backButton = page.getByRole("button", { name: /Kembali ke Feed/i });
+    await expect(backButton).toBeVisible({ timeout: 5000 });
     
     // Check detail page content
     await expect(page.getByText(/Deskripsi/i)).toBeVisible();

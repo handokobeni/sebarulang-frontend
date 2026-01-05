@@ -1,7 +1,9 @@
-import { Bell, User, Search } from "lucide-react";
+import { Bell, User, Search, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
+import { DropdownMenu, DropdownMenuItem } from "./ui/dropdown-menu";
+import Link from "next/link";
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -31,16 +33,16 @@ function Utensils({ className }: { className?: string }) {
 export function Header({ onSearch }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-      <div className="container mx-auto max-w-7xl px-4 flex h-16 items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="container mx-auto max-w-7xl px-3 sm:px-4 flex h-14 sm:h-16 items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer">
           <div className="bg-green-600 text-white p-2 rounded-lg">
-            <Utensils className="size-6" />
+            <Utensils className="size-5 sm:size-6" />
           </div>
           <div>
-            <h1 className="font-bold text-xl">sebarulang</h1>
-            <p className="text-xs text-gray-600">Berbagi Makanan, Berbagi Kasih</p>
+            <h1 className="font-bold text-lg sm:text-xl">sebarulang</h1>
+            <p className="text-xs text-gray-600 hidden sm:block">Berbagi Makanan, Berbagi Kasih</p>
           </div>
-        </div>
+        </Link>
 
         <div className="flex-1 max-w-md mx-8 hidden md:block">
           <div className="relative">
@@ -60,13 +62,39 @@ export function Header({ onSearch }: HeaderProps) {
               3
             </Badge>
           </Button>
-          <Button variant="ghost" size="icon">
-            <User className="size-5" />
-          </Button>
+
+          {/* User Menu Dropdown - Desktop */}
+          <DropdownMenu
+            trigger={
+              <Button variant="ghost" size="icon" className="hidden md:flex">
+                <User className="size-5" />
+              </Button>
+            }
+            align="right"
+          >
+            <Link href="/profile">
+              <DropdownMenuItem>
+                <User className="size-4 mr-2" />
+                <span>Profil Saya</span>
+              </DropdownMenuItem>
+            </Link>
+            <div className="border-t border-gray-200 my-1" />
+            <DropdownMenuItem>
+              <LogOut className="size-4 mr-2" />
+              <span>Keluar</span>
+            </DropdownMenuItem>
+          </DropdownMenu>
+
+          {/* User Button - Mobile (link to profile) */}
+          <Link href="/profile" className="md:hidden cursor-pointer">
+            <Button variant="ghost" size="icon">
+              <User className="size-5" />
+            </Button>
+          </Link>
         </div>
       </div>
 
-      <div className="container mx-auto max-w-7xl px-4 py-2 md:hidden">
+      <div className="container mx-auto max-w-7xl px-3 sm:px-4 py-1.5 sm:py-2 md:hidden">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
           <Input
