@@ -4,6 +4,7 @@ import { QueryProviders } from "@/lib/query/providers";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { getNonce } from "@/lib/utils/nonce";
 import { ToastProvider } from "./components/ui/toast-simple";
+import { PWAInstallPrompt } from "@/shared/components/PWAInstallPrompt";
 
 // Force dynamic rendering untuk access nonce di setiap request
 export const dynamic = "force-dynamic";
@@ -99,7 +100,10 @@ export default async function RootLayout({
       <body className="font-sans antialiased">
         <ErrorBoundary>
           <ToastProvider>
-            <QueryProviders>{children}</QueryProviders>
+            <QueryProviders>
+              {children}
+              <PWAInstallPrompt />
+            </QueryProviders>
           </ToastProvider>
         </ErrorBoundary>
       </body>
