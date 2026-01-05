@@ -36,14 +36,14 @@ jobs:
         run: pnpm type-check
 
       - name: Run unit tests
-        run: pnpm test --coverage
+        run: pnpm test
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./sebarulang-frontend/coverage/lcov.info
-          flags: unittests
-          name: codecov-umbrella
+      # - name: Upload coverage
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     files: ./sebarulang-frontend/coverage/lcov.info
+      #     flags: unittests
+      #     name: codecov-umbrella
 
   e2e-tests:
     runs-on: ubuntu-latest

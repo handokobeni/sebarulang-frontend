@@ -162,6 +162,11 @@ export default function Home() {
         />
         <Footer />
         <Toaster />
+        <ContactDialog
+          post={contactPost}
+          open={contactDialogOpen}
+          onOpenChange={setContactDialogOpen}
+        />
       </>
     );
   }
