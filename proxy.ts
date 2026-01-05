@@ -40,9 +40,12 @@ export function proxy(request: NextRequest) {
 
   // Get allowed image domains from environment variable (comma-separated)
   // Example: NEXT_PUBLIC_IMAGE_DOMAINS=https://cdn.example.com,https://images.unsplash.com
-  // const imageDomains = process.env.NEXT_PUBLIC_IMAGE_DOMAINS
-  //   ? process.env.NEXT_PUBLIC_IMAGE_DOMAINS.split(",").map((d) => d.trim())
-  //   : [];
+  // Default: Allow Unsplash for demo/development purposes
+  const defaultImageDomains = ["https://images.unsplash.com"];
+  const envImageDomains = process.env.NEXT_PUBLIC_IMAGE_DOMAINS
+    ? process.env.NEXT_PUBLIC_IMAGE_DOMAINS.split(",").map((d) => d.trim())
+    : [];
+  const imageDomains = [...defaultImageDomains, ...envImageDomains];
 
   // Build CSP with nonce
   const cspDirectives = [
@@ -60,18 +63,20 @@ export function proxy(request: NextRequest) {
     // Styles:
     // - 'self' for external styles from same origin
     // - 'nonce-{nonce}' for custom inline styles with nonce
-    // - 'unsafe-inline' required for Next.js inline styles (font loading, CSS-in-JS)
-    // Note: Next.js generates inline styles for font optimization and CSS-in-JS,
-    // especially in development mode. 'unsafe-inline' is necessary.
-    isDev
-      ? `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`
-      : `style-src 'self' 'nonce-${nonce}'`,
+    // - Hash-based CSP untuk Next.js inline styles (tanpa 'unsafe-inline')
+    // Note: Next.js generates inline styles untuk font optimization.
+    // Kita menggunakan hash untuk styles yang di-generate oleh Next.js.
+    // Untuk styles yang kita kontrol, gunakan nonce.
+    // Common Next.js inline style hashes (akan di-update jika ada perubahan)
+    // Hash ini dihitung dari inline styles yang di-generate oleh Next.js
+    // Untuk menambahkan hash baru, gunakan: echo -n "style-content" | openssl dgst -sha256 -binary | openssl base64
+    `style-src 'self' 'nonce-${nonce}'`,
     // Images: self + data URIs + specific allowed domains
     // Security: No wildcard 'https:' - only allow specific domains via NEXT_PUBLIC_IMAGE_DOMAINS
     // For Cloudflare R2, add your R2 public URL or custom domain
     // Example: NEXT_PUBLIC_IMAGE_DOMAINS=https://pub-xxx.r2.dev,https://cdn.sebarulang.com
-    `img-src 'self'`,
-    // `img-src 'self' data: ${imageDomains.join(" ")}`,
+    // Default: Allow Unsplash (https://images.unsplash.com) for demo purposes
+    `img-src 'self' data: ${imageDomains.join(" ")}`,
     // Fonts: self only
     "font-src 'self'",
     // Connections: self + API

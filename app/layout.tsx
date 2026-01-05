@@ -1,19 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProviders } from "@/lib/query/providers";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { getNonce } from "@/lib/utils/nonce";
+import { ToastProvider } from "./components/ui/toast-simple";
 
 // Force dynamic rendering untuk access nonce di setiap request
 export const dynamic = "force-dynamic";
 
-// Font optimization dengan next/font
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-});
+// Font optimization disabled untuk menghindari inline styles yang di-generate oleh Next.js
+// Ini memungkinkan kita menggunakan CSP tanpa 'unsafe-inline'
+// Font akan di-load via external stylesheet (lebih aman untuk CSP)
 
 export const metadata: Metadata = {
   title: {
@@ -73,9 +70,11 @@ export default async function RootLayout({
         {/* Inject nonce as meta tag untuk potential use di client */}
         {nonce && <meta name="csp-nonce" content={nonce} />}
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <ErrorBoundary>
-          <QueryProviders>{children}</QueryProviders>
+          <ToastProvider>
+            <QueryProviders>{children}</QueryProviders>
+          </ToastProvider>
         </ErrorBoundary>
       </body>
     </html>
