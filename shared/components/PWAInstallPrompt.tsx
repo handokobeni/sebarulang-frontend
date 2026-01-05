@@ -121,46 +121,46 @@ function PWAInstallPromptComponent({
 
   return (
     <div
-      className={`fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900 ${className || ""}`}
+      className={`fixed bottom-0 left-0 right-0 z-50 bg-gray-900 border-t border-gray-800 px-4 py-3 pb-safe shadow-lg md:bottom-4 md:left-auto md:right-4 md:max-w-md md:rounded-lg md:border md:border-gray-800 md:pb-3 ${className || ""}`}
       role="banner"
       aria-label="Install app prompt"
     >
       <div className="flex items-start gap-3">
-        <div className="flex-1">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-white">
             Install Sebarulang
           </h3>
-          <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+          <p className="mt-0.5 text-xs text-gray-400">
             Install aplikasi untuk akses lebih cepat dan pengalaman offline
           </p>
         </div>
         <button
           type="button"
           onClick={handleDismiss}
-          className="rounded-md p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          className="flex-shrink-0 rounded-md p-1.5 text-gray-400 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           aria-label="Dismiss install prompt"
         >
           <X className="size-4" />
         </button>
       </div>
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex items-center gap-3">
         <Button
           onClick={handleInstall}
           size="sm"
-          className="flex-1"
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium min-h-[44px] gap-2"
           aria-label="Install Sebarulang app"
         >
           <Download className="size-4" />
           Install
         </Button>
-        <Button
+        <button
+          type="button"
           onClick={handleDismiss}
-          variant="outline"
-          size="sm"
+          className="flex-shrink-0 text-sm text-gray-400 hover:text-white transition-colors px-3 py-2 min-h-[44px]"
           aria-label="Dismiss install prompt"
         >
           Nanti
-        </Button>
+        </button>
       </div>
     </div>
   );

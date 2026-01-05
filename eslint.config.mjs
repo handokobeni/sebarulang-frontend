@@ -27,7 +27,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "node_modules/**",
     "coverage/**",
-    ".next/**",
+    // Playwright generated files (should not be linted)
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 
