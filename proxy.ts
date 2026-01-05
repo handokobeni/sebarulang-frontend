@@ -53,24 +53,33 @@ export function proxy(request: NextRequest) {
     // Scripts:
     // - 'self' for external scripts from same origin (including _next/static)
     // - 'nonce-{nonce}' for custom inline scripts with nonce
-    // - 'unsafe-inline' required for Next.js inline scripts (hydration, etc.)
-    // - 'unsafe-eval' in dev ONLY for Next.js hot reload (required)
-    // Note: Next.js App Router may generate inline scripts for hydration,
-    // so 'unsafe-inline' is necessary. Nonce is still used for custom scripts.
+    // - 'unsafe-inline' in dev ONLY for Next.js hot reload, HMR, and development tools
+    // - 'unsafe-eval' in dev ONLY for Next.js hot reload and webpack (required)
+    // Note: Next.js di development mode menghasilkan BANYAK inline scripts untuk:
+    // - Hot Module Replacement (HMR)
+    // - Webpack dev server
+    // - React Fast Refresh
+    // - Development error overlays
+    // Di production, Next.js sudah optimize dan tidak generate banyak inline scripts,
+    // sehingga tidak perlu 'unsafe-inline' untuk script-src.
     isDev
       ? `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'`
       : `script-src 'self' 'nonce-${nonce}'`,
     // Styles:
     // - 'self' for external styles from same origin
     // - 'nonce-{nonce}' for custom inline styles with nonce
-    // - Hash-based CSP untuk Next.js inline styles (tanpa 'unsafe-inline')
+    // - 'unsafe-inline' in dev ONLY for Next.js hot reload and development tools
+    // - Hash-based CSP untuk Next.js inline styles di production (tanpa 'unsafe-inline')
     // Note: Next.js generates inline styles untuk font optimization.
-    // Kita menggunakan hash untuk styles yang di-generate oleh Next.js.
+    // Di development, Next.js hot reload memerlukan 'unsafe-inline' untuk styles.
+    // Di production, kita menggunakan hash-based CSP untuk lebih strict.
     // Untuk styles yang kita kontrol, gunakan nonce.
     // Common Next.js inline style hashes (akan di-update jika ada perubahan)
     // Hash ini dihitung dari inline styles yang di-generate oleh Next.js
     // Untuk menambahkan hash baru, gunakan: echo -n "style-content" | openssl dgst -sha256 -binary | openssl base64
-    `style-src 'self' 'nonce-${nonce}'`,
+    isDev
+      ? `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`
+      : `style-src 'self' 'nonce-${nonce}'`,
     // Images: self + data URIs + specific allowed domains
     // Security: No wildcard 'https:' - only allow specific domains via NEXT_PUBLIC_IMAGE_DOMAINS
     // For Cloudflare R2, add your R2 public URL or custom domain
@@ -80,7 +89,10 @@ export function proxy(request: NextRequest) {
     // Fonts: self only
     "font-src 'self'",
     // Connections: self + API
-    `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}`,
+    // In development, also allow WebSocket connections for Next.js HMR (Hot Module Replacement)
+    isDev
+      ? `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"} ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*`
+      : `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}`,
     // Frames: none (prevent clickjacking)
     "frame-ancestors 'none'",
     // Base URI: self only
@@ -89,6 +101,13 @@ export function proxy(request: NextRequest) {
     "form-action 'self'",
     // Object/embed: none
     "object-src 'none'",
+    // Workers: self + blob for service worker (PWA)
+    // Service worker requires blob: untuk registration
+    // Development: allow blob: for webpack workers and service worker
+    // Production: allow blob: for service worker registration
+    "worker-src 'self' blob:",
+    // Manifest: self only (for manifest.json)
+    "manifest-src 'self'",
     // Upgrade insecure requests (only in production)
     ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
   ];

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { QueryProviders } from "@/lib/query/providers";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
@@ -54,6 +54,25 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Sebarulang",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/icons/icon-512x512.svg", sizes: "512x512", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon.svg", sizes: "180x180", type: "image/svg+xml" },
+    ],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#10b981",
 };
 
 export default async function RootLayout({
@@ -69,6 +88,13 @@ export default async function RootLayout({
       <head>
         {/* Inject nonce as meta tag untuk potential use di client */}
         {nonce && <meta name="csp-nonce" content={nonce} />}
+        {/* PWA Meta Tags */}
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg" />
+        <meta name="theme-color" content="#10b981" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Sebarulang" />
       </head>
       <body className="font-sans antialiased">
         <ErrorBoundary>
