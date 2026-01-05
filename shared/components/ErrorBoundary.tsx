@@ -34,7 +34,9 @@ export class ErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log to Sentry (with optimization)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (typeof window !== "undefined" && (window as any).Sentry) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).Sentry.captureException(error, {
         contexts: {
           react: {

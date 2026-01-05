@@ -51,6 +51,7 @@ export function FoodPostCard({ post, onContact, onLike, isLiked = false, onViewD
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
       <div className="relative">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img 
           src={post.imageUrl} 
           alt={post.foodName}

@@ -111,7 +111,7 @@ test.describe("Post Detail Page", () => {
         state: 'visible',
         timeout: 10000 
       });
-    } catch (e) {
+    } catch {
       // Try waiting for dialog title directly
       await page.waitForSelector('[data-slot="dialog-title"]', { timeout: 10000 });
     }
@@ -154,19 +154,14 @@ test.describe("Post Detail Page", () => {
   test("should handle share button click", async ({ page }) => {
     // Mock navigator.share and clipboard
     await page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).navigator.share = async () => {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).navigator.clipboard = {
         writeText: async () => {},
       };
     });
 
-    // Find share button
-    const shareButton = page.locator('button').filter({ 
-      has: page.locator('svg') 
-    }).filter({ 
-      hasText: /share/i 
-    }).first();
-    
     // Alternative: find by SVG class
     const shareButtons = page.locator('button').all();
     let foundShareButton = false;

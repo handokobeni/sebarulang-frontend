@@ -15,6 +15,7 @@ export const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
       
       // Retry failed requests
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       retry: (failureCount, error: any) => {
         // Don't retry on 4xx errors (client errors)
         if (error?.response?.status >= 400 && error?.response?.status < 500) {

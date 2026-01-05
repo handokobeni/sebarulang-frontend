@@ -49,7 +49,9 @@ if (env.isProduction && env.sentry.dsn) {
       if (event.request) {
         // Remove sensitive headers
         if (event.request.headers) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           delete (event.request.headers as any).Authorization;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           delete (event.request.headers as any).Cookie;
         }
 
@@ -81,8 +83,11 @@ if (env.isProduction && env.sentry.dsn) {
 
       // Don't log sensitive data
       if (breadcrumb.data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (breadcrumb.data as any).password;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (breadcrumb.data as any).token;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (breadcrumb.data as any).secret;
       }
 

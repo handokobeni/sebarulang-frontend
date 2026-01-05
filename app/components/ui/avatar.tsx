@@ -9,7 +9,7 @@ interface AvatarProps extends React.ComponentProps<"div"> {
   children?: React.ReactNode;
 }
 
-interface AvatarImageProps extends React.ComponentProps<"img"> {}
+type AvatarImageProps = React.ComponentProps<"img">;
 
 interface AvatarFallbackProps extends React.ComponentProps<"div"> {
   children?: React.ReactNode;
@@ -30,11 +30,13 @@ function Avatar({ className, children, ...props }: AvatarProps) {
   );
 }
 
-function AvatarImage({ className, ...props }: AvatarImageProps) {
+function AvatarImage({ className, alt = "", ...props }: AvatarImageProps) {
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       data-slot="avatar-image"
       className={cn("aspect-square size-full object-cover", className)}
+      alt={alt}
       {...props}
     />
   );

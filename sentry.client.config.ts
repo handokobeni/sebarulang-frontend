@@ -29,6 +29,7 @@ if (env.isProduction && env.sentry.dsn) {
 
       // Remove sensitive data
       if (event.request?.headers) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (event.request.headers as any).Authorization;
       }
 

@@ -17,7 +17,9 @@ export function logError(error: Error, context?: LogContext): void {
   }
 
   // Production: Send to Sentry
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (typeof window !== "undefined" && (window as any).Sentry) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).Sentry.captureException(error, {
       extra: context,
       tags: {
@@ -37,9 +39,11 @@ export function logWarning(message: string, context?: LogContext): void {
   // Production: Only log warnings jika critical
   if (
     typeof window !== "undefined" &&
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).Sentry &&
     context?.critical
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).Sentry.captureMessage(message, {
       level: "warning",
       extra: context,
@@ -50,6 +54,7 @@ export function logWarning(message: string, context?: LogContext): void {
 export function logInfo(message: string, context?: LogContext): void {
   // Info logs tidak dikirim ke Sentry (hemat quota)
   if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
     console.log("Info:", message, context);
   }
 }

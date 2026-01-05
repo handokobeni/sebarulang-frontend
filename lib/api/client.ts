@@ -20,6 +20,7 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (env.isDevelopment) {
+      // eslint-disable-next-line no-console
       console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
     }
     return config;
