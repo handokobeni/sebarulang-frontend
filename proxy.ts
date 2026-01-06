@@ -88,11 +88,32 @@ export function proxy(request: NextRequest) {
     `img-src 'self' data: ${imageDomains.join(" ")}`,
     // Fonts: self only
     "font-src 'self'",
-    // Connections: self + API
-    // In development, also allow WebSocket connections for Next.js HMR (Hot Module Replacement)
-    isDev
-      ? `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"} ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:*`
-      : `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}`,
+    // Connections: self + API + Mapbox
+    // Mapbox requires:
+    // - https://api.mapbox.com for API calls (styles, geocoding, etc.)
+    // - https://*.tiles.mapbox.com for map tiles (wildcard subdomain supported in CSP)
+    // - https://events.mapbox.com for analytics (optional)
+    (() => {
+      const mapboxDomains = [
+        "https://api.mapbox.com",
+        "https://*.tiles.mapbox.com",
+        "https://events.mapbox.com",
+      ];
+      const connectSrc = [
+        "'self'",
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
+        ...mapboxDomains,
+      ];
+      if (isDev) {
+        connectSrc.push(
+          "ws://localhost:*",
+          "wss://localhost:*",
+          "ws://127.0.0.1:*",
+          "wss://127.0.0.1:*"
+        );
+      }
+      return `connect-src ${connectSrc.join(" ")}`;
+    })(),
     // Frames: none (prevent clickjacking)
     "frame-ancestors 'none'",
     // Base URI: self only

@@ -16,7 +16,10 @@ export function ContactDialog({ post, open, onOpenChange }: ContactDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" onClose={() => onOpenChange(false)}>
+      <DialogContent 
+        className="max-w-full sm:max-w-md" 
+        onClose={() => onOpenChange(false)}
+      >
         <DialogHeader>
           <DialogTitle>Hubungi Giver</DialogTitle>
         </DialogHeader>

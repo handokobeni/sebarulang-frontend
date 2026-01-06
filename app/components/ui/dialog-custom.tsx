@@ -71,8 +71,14 @@ function DialogContent({ className, children, onClose, ...props }: DialogContent
       <div
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 sm:max-w-lg",
-          "animate-in fade-in-0 zoom-in-95",
+          // Mobile: bottom sheet style, Desktop: centered
+          "fixed z-50 grid w-full gap-4 rounded-t-lg sm:rounded-lg border bg-background shadow-lg",
+          // Mobile positioning (bottom sheet)
+          "bottom-0 left-0 right-0 max-h-[90vh]",
+          // Desktop positioning (centered)
+          "sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-lg sm:max-h-[85vh]",
+          // Padding responsive
+          "p-4 sm:p-6",
           className,
         )}
         {...props}
@@ -97,7 +103,7 @@ function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)}
+      className={cn("flex flex-col space-y-1.5 text-left", className)}
       {...props}
     />
   );

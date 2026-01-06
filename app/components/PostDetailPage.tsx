@@ -3,8 +3,8 @@
 import { ArrowLeft, MapPin, Clock, User, Package, MessageCircle, Heart, Share2 } from "lucide-react";
 import { FoodPost } from "./FoodPostCard";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { ImageWithFallback } from "./ImageWithFallback";
+import { ImageGallery } from "./ImageGallery";
+import { MapboxMap } from "./MapboxMap";
 
 interface PostDetailPageProps {
   post: FoodPost;
@@ -32,6 +32,18 @@ export function PostDetailPage({ post, onBack, onContact, onLike, isLiked }: Pos
     }
   };
 
+  // Default coordinates untuk Jakarta jika tidak ada
+  const locationCoords = {
+    lat: post.latitude ?? -6.2088,
+    lng: post.longitude ?? 106.8456,
+  };
+
+  // Prepare images array for gallery
+  // Use images array if available, otherwise fallback to single imageUrl
+  const galleryImages = post.images && post.images.length > 0 
+    ? post.images 
+    : [post.imageUrl];
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -52,20 +64,11 @@ export function PostDetailPage({ post, onBack, onContact, onLike, isLiked }: Pos
       <div className="container mx-auto max-w-7xl px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            {/* Image */}
-            <div className="relative aspect-video bg-gray-100">
-              <ImageWithFallback
-                src={post.imageUrl}
-                alt={post.foodName}
-                className="w-full h-full object-cover"
-              />
-              <Badge
-                className="absolute top-4 right-4"
-                variant={post.status === "available" ? "default" : "secondary"}
-              >
-                {post.status === "available" ? "Tersedia" : "Sudah Diambil"}
-              </Badge>
-            </div>
+            {/* Image Gallery */}
+            <ImageGallery
+              images={galleryImages}
+              status={post.status}
+            />
 
             {/* Content */}
             <div className="p-6 md:p-8">
@@ -144,6 +147,16 @@ export function PostDetailPage({ post, onBack, onContact, onLike, isLiked }: Pos
                 <span className="inline-block bg-green-100 text-green-800 px-4 py-2 rounded-full font-medium">
                   {post.category}
                 </span>
+              </div>
+
+              {/* Map Section - Moved after Description and Category */}
+              <div className="mb-8">
+                <h2 className="text-xl font-bold mb-3">Lokasi</h2>
+                <MapboxMap
+                  latitude={locationCoords.lat}
+                  longitude={locationCoords.lng}
+                  location={post.location}
+                />
               </div>
 
               {/* Additional Info */}

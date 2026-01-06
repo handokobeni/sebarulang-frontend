@@ -8,7 +8,8 @@ export interface FoodPost {
   id: string;
   foodName: string;
   description: string;
-  imageUrl: string;
+  imageUrl: string; // Main image (for backward compatibility)
+  images?: string[]; // Array of images for gallery
   location: string;
   postedTime: string;
   status: "available" | "claimed";
@@ -16,6 +17,8 @@ export interface FoodPost {
   giverName: string;
   giverAvatar?: string;
   category: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface FoodPostCardProps {
